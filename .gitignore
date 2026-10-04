@@ -1,0 +1,27 @@
+# Python / uv
+__pycache__/
+*.py[cod]
+.venv/
+/dist/
+*.egg-info/
+
+# Tooling caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+
+# Editors
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Host-specific settings (copy .env.example)
+.env
+.env.*
+!.env.example
+
+# scripts/backup.sh output. The Matter archive holds the fabric's
+# credentials (anyone with it can control the thermostats): never commit it.
+backups/

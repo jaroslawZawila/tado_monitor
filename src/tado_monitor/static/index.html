@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Home climate</title>
+  <link rel="stylesheet" href="/static/vendor/uPlot.min.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="page-head">
+    <h1>Home climate</h1>
+    <p class="meta" id="meta" aria-live="polite">Loading…</p>
+  </header>
+
+  <nav class="ranges" id="ranges" aria-label="Time range"></nav>
+
+  <main class="charts" id="charts"></main>
+
+  <template id="chart-card">
+    <figure class="card">
+      <figcaption>
+        <h2 class="title"></h2>
+        <p class="note"></p>
+      </figcaption>
+      <ul class="legend"></ul>
+      <div class="plot"></div>
+      <p class="empty" hidden>No data in this range.</p>
+      <button type="button" class="table-toggle" aria-expanded="false">Show table</button>
+      <div class="table-wrap" hidden></div>
+    </figure>
+  </template>
+
+  <script src="/static/vendor/uPlot.iife.min.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

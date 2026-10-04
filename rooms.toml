@@ -1,0 +1,11 @@
+# Display names for paired devices, keyed by Matter node id.
+# `uv run tado-cli nodes` lists the ids; restart the
+# collector after editing (docker compose restart collector).
+#
+# Two devices in one room (e.g. thermostat + valve) need two distinct
+# names, otherwise their lines share a label in Grafana.
+
+[rooms]
+1 = "Office"
+2 = "Master room"
+3 = "Salon"

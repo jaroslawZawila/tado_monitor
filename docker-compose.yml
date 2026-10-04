@@ -1,0 +1,121 @@
+# tado X climate logger: local Matter over Thread -> Postgres -> Grafana.
+#
+#   docker compose up -d --build     Matter server, Postgres, collector,
+#                                    dashboard on http://<host>:8080
+#   + Grafana (http://<host>:3000)   COMPOSE_PROFILES=grafana in .env
+#   Matter dashboard / pairing UI:   http://localhost:5580 (on the host only)
+#
+# Runs as-is on a laptop or a Raspberry Pi (64-bit OS; every image has an
+# arm64 build). Host-specific knobs live in .env -- see .env.example.
+#
+# Bridge X is the Thread border router; it advertises a route to the Thread
+# mesh, so with host networking the Matter server reaches the devices
+# directly over IPv6. Bridge networking breaks Matter (mDNS + IPv6), hence
+# network_mode: host for matter-server -- and for the collector, so it can
+# reach matter-server on 127.0.0.1 without exposing that to the LAN.
+name: tado-monitor
+
+services:
+  matter-server:
+    image: ghcr.io/matter-js/matterjs-server:stable
+    network_mode: host
+    read_only: true
+    restart: unless-stopped
+    environment:
+      # The WebSocket API has no auth and can control the thermostats:
+      # localhost only. The image's own healthcheck probes this address.
+      LISTEN_ADDRESS: 127.0.0.1
+      # Empty = auto-detect. Pin it (eth0, wlan0, ...) if the host has
+      # several interfaces and discovery picks the wrong one.
+      PRIMARY_INTERFACE: ${MATTER_INTERFACE:-}
+      # Empty = no cap. On a 1 GB Pi set --max-old-space-size=256 so V8's
+      # lazy GC can't grow the heap into the OOM killer.
+      NODE_OPTIONS: ${MATTER_NODE_OPTIONS:-}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      # Our fabric: credentials for every paired device. Lose it and you
+      # re-pair everything.
+      - matter_data:/data
+
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: tado
+      POSTGRES_PASSWORD: tado
+      POSTGRES_DB: tado
+    # 5433, not 5432, so it can sit next to another local Postgres.
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    restart: unless-stopped
+    healthcheck:
+      # Over TCP, not the socket: on first boot the image runs init.sql on a
+      # socket-only temporary server, which would otherwise count as healthy.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U tado -d tado"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+
+  collector:
+    build: .
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      TADO_NAMES_FILE: /app/rooms.toml
+    volumes:
+      - ./rooms.toml:/app/rooms.toml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      matter-server:
+        condition: service_healthy
+
+  # The FastAPI dashboard (src/tado_monitor/web.py): ~40 MB, so it runs
+  # everywhere, Pi 3 included. Read-only DB role, same as Grafana.
+  web:
+    build: .
+    command: ["uvicorn", "tado_monitor.web:app", "--host", "0.0.0.0", "--port", "8080"]
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    environment:
+      TADO_DATABASE_URL: postgresql://grafana:grafana@postgres:5432/tado
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    # The image has no curl; stdlib urllib is enough.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  # ~370 MB of RAM, more than the rest of the stack together: opt-in via
+  # COMPOSE_PROFILES=grafana, so a 1 GB Pi can run without it.
+  grafana:
+    image: grafana/grafana:13.2.3
+    profiles: [grafana]
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      # Read-only viewing without a login, e.g. from a phone on the LAN.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/climate.json
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  matter_data:
+  postgres_data:
+  grafana_data:
