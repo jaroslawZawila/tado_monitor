@@ -1,7 +1,7 @@
 "use strict";
 
-// One page, four charts over the same time range. Data comes from
-// /api/series (see dashboard.py); uPlot draws the lines.
+// One page, four charts over the same time range, for every room or just
+// one. Data comes from /api/series (see dashboard.py); uPlot draws the lines.
 
 const RANGES = ["3h", "6h", "24h", "3d", "7d", "1m", "3m", "12m"];
 const DEFAULT_RANGE = "24h";
@@ -21,6 +21,8 @@ const CHARTS = [
 
 const state = {
   range: initialRange(),
+  room: new URLSearchParams(location.search).get("room"), // null: all rooms
+  roomList: null, // rooms the room row was last drawn for
   payload: null,
   cards: new Map(),
   hovered: null, // the card under the pointer; only it shows a tooltip
@@ -110,11 +112,62 @@ function renderRanges() {
 function selectRange(key) {
   if (key === state.range) return;
   state.range = key;
-  const url = new URL(location.href);
-  url.searchParams.set("range", key);
-  history.replaceState(null, "", url);
+  setParam("range", key);
   renderRanges();
   load({ dim: true });
+}
+
+function setParam(name, value) {
+  const url = new URL(location.href);
+  if (value == null) url.searchParams.delete(name);
+  else url.searchParams.set(name, value);
+  history.replaceState(null, "", url);
+}
+
+// ---- room control ---------------------------------------------------------
+
+// Rebuilt only when the room list changes, so the minutely refresh doesn't
+// steal keyboard focus from these buttons.
+function renderRooms() {
+  const rooms = state.payload.rooms;
+  const nav = document.getElementById("rooms");
+  const list = rooms.join("\n");
+  if (state.roomList !== list) {
+    state.roomList = list;
+    nav.hidden = rooms.length < 2;
+    nav.replaceChildren(...[null, ...rooms].map((room) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = room ?? "All rooms";
+      b.dataset.room = room ?? "";
+      b.addEventListener("click", () => selectRoom(room));
+      return b;
+    }));
+  }
+  for (const b of nav.children) {
+    b.setAttribute("aria-pressed", String(b.dataset.room === (state.room ?? "")));
+  }
+}
+
+function selectRoom(room) {
+  if (room === state.room) return;
+  state.room = room;
+  setParam("room", room);
+  renderRooms();
+  render();
+}
+
+// A room from an old link that no longer exists falls back to all rooms.
+function validateRoom() {
+  if (state.room != null && !state.payload.rooms.includes(state.room)) {
+    state.room = null;
+    setParam("room", null);
+  }
+}
+
+function visibleSeries(p, key) {
+  const series = p.charts[key];
+  return state.room == null ? series : series.filter((s) => s.name === state.room);
 }
 
 // ---- data -----------------------------------------------------------------
@@ -129,6 +182,8 @@ async function load({ dim = false } = {}) {
     const payload = await res.json();
     if (id !== state.request) return; // superseded by a newer range click
     state.payload = payload;
+    validateRoom();
+    renderRooms();
     render();
     const time = new Date().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
     document.getElementById("meta").textContent =
@@ -191,7 +246,7 @@ function plotSize(card) {
 }
 
 function updateCard(card, p) {
-  const series = p.charts[card.spec.key];
+  const series = visibleSeries(p, card.spec.key);
   const hasData = series.length > 0;
   card.plot.hidden = !hasData;
   card.empty.hidden = hasData;
@@ -372,7 +427,7 @@ function updateTooltip(card, u) {
 function renderTable(card) {
   const p = state.payload;
   const spec = card.spec;
-  const series = p.charts[spec.key];
+  const series = visibleSeries(p, spec.key);
   const table = document.createElement("table");
   table.setAttribute("aria-label", `${spec.title}, ${p.label.toLowerCase()}`);
   const head = table.createTHead().insertRow();

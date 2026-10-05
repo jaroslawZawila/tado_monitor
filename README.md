@@ -20,7 +20,8 @@ tado X ──Thread──▶ Bridge X (border router) ──IPv6──▶ host
   (device, metric, time), and `named_readings` is the view Grafana reads.
 - **web**: `src/tado_monitor/web.py`, a FastAPI dashboard on
   http://localhost:8080 with temperature, dew point, humidity and heating
-  demand per room, over 3h / 6h / 24h / 3d / 7d / 1m / 3m / 12m. It uses
+  demand per room (all rooms, or pick one; `?room=Office` links to it), over
+  3h / 6h / 24h / 3d / 7d / 1m / 3m / 12m. It uses
   about 50 MB of RAM, so it also runs on a Pi 3. `GET /api/series?range=24h`
   serves the same data as JSON.
 - **grafana** (optional): the "Home climate" dashboard is provisioned from
