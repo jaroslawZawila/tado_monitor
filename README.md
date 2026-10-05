@@ -25,7 +25,8 @@ tado X ──Thread──▶ Bridge X (border router) ──IPv6──▶ host
   about 50 MB of RAM, so it also runs on a Pi 3. `GET /api/series?range=24h`
   serves the same data as JSON.
 - **grafana** (optional): the "Home climate" dashboard is provisioned from
-  `grafana/dashboards/climate.json`. It's read-only without a login;
+  `grafana/dashboards/climate.json`, with a Room picker at the top
+  (`?var-room=Office`). It's read-only without a login;
   the admin login is `admin` / `admin`. It uses about 370 MB of RAM, so it's
   opt-in.
 

@@ -9,6 +9,36 @@
   "editable": false,
   "graphTooltip": 1,
   "refresh": "1m",
+  "templating": {
+    "list": [
+      {
+        "name": "room",
+        "label": "Room",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "tado-pg"
+        },
+        "query": "SELECT DISTINCT name FROM devices ORDER BY 1",
+        "definition": "SELECT DISTINCT name FROM devices ORDER BY 1",
+        "refresh": 1,
+        "sort": 0,
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "options": [],
+        "hide": 0
+      }
+    ]
+  },
   "time": {
     "from": "now-24h",
     "to": "now"
@@ -40,7 +70,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT time, metric, value FROM (\n  SELECT DISTINCT ON (name) ts AS time, name AS metric, value\n  FROM named_readings\n  WHERE metric = 'temperature' AND ts > now() - interval '30 minutes'\n  ORDER BY name, ts DESC\n) latest\nORDER BY time"
+          "rawSql": "SELECT time, metric, value FROM (\n  SELECT DISTINCT ON (name) ts AS time, name AS metric, value\n  FROM named_readings\n  WHERE name IN ($room) AND metric = 'temperature' AND ts > now() - interval '30 minutes'\n  ORDER BY name, ts DESC\n) latest\nORDER BY time"
         }
       ],
       "fieldConfig": {
@@ -104,7 +134,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT time, metric, value FROM (\n  SELECT DISTINCT ON (name) ts AS time, name AS metric, value\n  FROM named_readings\n  WHERE metric = 'humidity' AND ts > now() - interval '30 minutes'\n  ORDER BY name, ts DESC\n) latest\nORDER BY time"
+          "rawSql": "SELECT time, metric, value FROM (\n  SELECT DISTINCT ON (name) ts AS time, name AS metric, value\n  FROM named_readings\n  WHERE name IN ($room) AND metric = 'humidity' AND ts > now() - interval '30 minutes'\n  ORDER BY name, ts DESC\n) latest\nORDER BY time"
         }
       ],
       "fieldConfig": {
@@ -169,7 +199,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT $__timeGroupAlias(ts, $__interval), name AS metric, avg(value) AS value\nFROM named_readings\nWHERE metric = 'temperature' AND $__timeFilter(ts)\nGROUP BY 1, 2\nORDER BY 1"
+          "rawSql": "SELECT $__timeGroupAlias(ts, $__interval), name AS metric, avg(value) AS value\nFROM named_readings\nWHERE name IN ($room) AND metric = 'temperature' AND $__timeFilter(ts)\nGROUP BY 1, 2\nORDER BY 1"
         }
       ],
       "fieldConfig": {
@@ -177,7 +207,7 @@
           "unit": "celsius",
           "decimals": 1,
           "color": {
-            "mode": "palette-classic"
+            "mode": "palette-classic-by-name"
           },
           "custom": {
             "drawStyle": "line",
@@ -235,7 +265,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT $__timeGroupAlias(ts, $__interval), name AS metric, avg(value) AS value\nFROM named_readings\nWHERE metric = 'humidity' AND $__timeFilter(ts)\nGROUP BY 1, 2\nORDER BY 1"
+          "rawSql": "SELECT $__timeGroupAlias(ts, $__interval), name AS metric, avg(value) AS value\nFROM named_readings\nWHERE name IN ($room) AND metric = 'humidity' AND $__timeFilter(ts)\nGROUP BY 1, 2\nORDER BY 1"
         }
       ],
       "fieldConfig": {
@@ -243,7 +273,7 @@
           "unit": "humidity",
           "decimals": 0,
           "color": {
-            "mode": "palette-classic"
+            "mode": "palette-classic-by-name"
           },
           "custom": {
             "drawStyle": "line",
@@ -303,7 +333,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT $__timeGroupAlias(ts, $__interval), name AS metric, avg(value) AS value\nFROM named_readings\nWHERE metric = 'setpoint' AND $__timeFilter(ts)\nGROUP BY 1, 2\nORDER BY 1"
+          "rawSql": "SELECT $__timeGroupAlias(ts, $__interval), name AS metric, avg(value) AS value\nFROM named_readings\nWHERE name IN ($room) AND metric = 'setpoint' AND $__timeFilter(ts)\nGROUP BY 1, 2\nORDER BY 1"
         }
       ],
       "fieldConfig": {
@@ -311,7 +341,7 @@
           "unit": "celsius",
           "decimals": 1,
           "color": {
-            "mode": "palette-classic"
+            "mode": "palette-classic-by-name"
           },
           "custom": {
             "drawStyle": "line",
@@ -369,7 +399,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT $__timeGroupAlias(ts, $__interval), name AS metric, avg(value) AS value\nFROM named_readings\nWHERE metric = 'heating_demand' AND $__timeFilter(ts)\nGROUP BY 1, 2\nORDER BY 1"
+          "rawSql": "SELECT $__timeGroupAlias(ts, $__interval), name AS metric, avg(value) AS value\nFROM named_readings\nWHERE name IN ($room) AND metric = 'heating_demand' AND $__timeFilter(ts)\nGROUP BY 1, 2\nORDER BY 1"
         }
       ],
       "fieldConfig": {
@@ -377,7 +407,7 @@
           "unit": "percent",
           "decimals": 0,
           "color": {
-            "mode": "palette-classic"
+            "mode": "palette-classic-by-name"
           },
           "custom": {
             "drawStyle": "line",
